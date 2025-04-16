@@ -514,11 +514,11 @@
       </p>
       <h4>Debugging and Reverse Engineering Insights</h4>
       <p>
-        To accurately map between protocols, reverse engineering played a vital role. Using Wireshark, CIGI packets were captured during known DIS events, such as spawning or firing. This allowed observation of:
+        To accurately map between protocols, reverse engineering played a vital role. Using Wireshark, CIGI packets were captured during known events, such as spawning or firing. This allowed observation of:
       </p>
       <ul>
         <li>How CIGI represents multiple entities in one packet (e.g., aircraft and its fired munitions).</li>
-        <li>Which specific setter values in the CIGI Class Library (CCL) are triggered in response to certain DIS events.</li>
+        <li>Which specific setter values in the CIGI Class Library (CCL) are triggered in response to these events.</li>
       </ul>
       <p>
         From this, the mapping strategy was refined by referencing the CIGI Class Library (CCL) and OpenDIS side-by-side. DIS getters were used to extract data fields, and CIGI setters were then applied to build structured Entity Control packets.
