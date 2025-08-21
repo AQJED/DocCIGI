@@ -168,7 +168,7 @@
 <body>
   <!-- Sidebar Navigation -->
   <aside class="sidebar">
-    <h1 class="brand">DIS-CIGI <span class="version">v1.0</span></h1>
+    <h1 class="brand">DIS-CIGI <span class="version">v1.1</span></h1>
     <input type="text" placeholder="Search articles..." class="search-box" />
     <nav class="nav-links">
       <a href="#introduction">Getting Started</a>
@@ -185,15 +185,23 @@
     <div class="breadcrumb">Home</div>
     <h1 class="page-title" id="introduction">Getting Started</h1>
     <p class="lead">
-      This guide focuses solely on converting DIS data into CIGI-compliant packets. It provides a detailed exploration of each protocol, practical mapping strategies, and data conversion techniques essential for seamless simulation interoperability.
+      This guide focuses on converting DIS Entity State PDU data into CIGI-compliant packets. It concentrates on the practical conversion process (mapping strategies, data conversion, and update rate) so you can achieve reliable interoperability between DIS-based sources and CIGI-driven image generators.
     </p>
+
+    <h3>Main Difference</h3>
+    <ul>
+      <li><strong>DIS</strong> is a network exchange format for simulation state across participants. It describes <em>what exists</em> and <em>how it moves</em>.</li>
+      <li><strong>CIGI</strong> is a visual control protocol for IGs. It tells the IG <em>what to draw</em> and <em>how to draw it</em>, frame by frame.</li>
+    </ul>
 
     <!-- DIS Protocol Section -->
     <section class="doc-section" id="dis-protocol">
       <h2>Understanding the DIS Protocol</h2>
       <p>
-        DIS (Distributed Interactive Simulation) is used for exchanging simulation data such as entity states, movements, and interactions across distributed systems. The Entity State PDU, one of its key components, encapsulates detailed information about each simulation entity.
+        DIS (Distributed Interactive Simulation) is used for exchanging simulation data such as entity states, movements, and interactions across distributed systems. The Entity State PDU encapsulates detailed information about each simulation entity.
       </p>
+      <p><em>Key idea:</em> DIS gives you <strong>truth snapshots</strong> at its own update rate. You will translate these into IG-friendly pose updates and states.</p>
+
       <!-- Insert the single DIS image with caption -->
       <div class="image-banner">
         <figure>
@@ -201,6 +209,7 @@
           <figcaption style="font-size: 1.2em; font-weight: bold;">A DIS Package Sample Capture by Wireshark.</figcaption>
         </figure>
       </div>
+
       <h3>DIS Packet Structure: Detailed Field Breakdown</h3>
       <table>
          <thead>
@@ -233,52 +242,52 @@
            </tr>
            <tr>
              <td>Entity ID (Composite)</td>
-             <td>Combines Site ID, Application ID, and Entity ID to uniquely identify an entity.</td>
-             <td>getEntityID() (returns object with getSite(), getApplication(), getEntity())</td>
+             <td>Site ID, Application ID, Entity ID.</td>
+             <td>getEntityID()</td>
            </tr>
            <tr>
              <td>Force ID</td>
-             <td>Identifies the force affiliation (e.g., friendly, enemy).</td>
+             <td>Affiliation (e.g., friendly, enemy).</td>
              <td>getForceId()</td>
            </tr>
            <tr>
              <td>Entity Type</td>
-             <td>Specifies attributes such as country, domain, category, etc.</td>
+             <td>Country, domain, category, etc.</td>
              <td>getEntityType()</td>
            </tr>
            <tr>
              <td>Entity Appearance</td>
-             <td>A 32-bit bitfield encoding visual flags, health, and other state parameters.</td>
+             <td>32-bit bitfield (visual flags, health, state).</td>
              <td>getEntityAppearance()</td>
            </tr>
            <tr>
              <td>Entity Location (X, Y, Z)</td>
-             <td>Location expressed in ECEF coordinates (X, Y, Z).</td>
-             <td>getEntityLocation() (returns object with getX(), getY(), getZ())</td>
+             <td>ECEF coordinates.</td>
+             <td>getEntityLocation()</td>
            </tr>
            <tr>
              <td>Entity Orientation</td>
-             <td>Orientation represented by Euler angles in radians (Psi, Theta, Phi).</td>
-             <td>getEntityOrientation() (returns object with getPsi(), getTheta(), getPhi())</td>
+             <td>Euler angles (Psi, Theta, Phi) in radians.</td>
+             <td>getEntityOrientation()</td>
            </tr>
            <tr>
              <td>Linear Velocity (X, Y, Z)</td>
-             <td>Velocity components in m/s.</td>
-             <td>getEntityLinearVelocity() (returns object with getX(), getY(), getZ())</td>
+             <td>Velocity in m/s.</td>
+             <td>getEntityLinearVelocity()</td>
            </tr>
            <tr>
              <td>Dead Reckoning Params</td>
-             <td>Parameters used for extrapolating the entity’s future location and orientation.</td>
+             <td>Extrapolation parameters.</td>
              <td>getDeadReckoningParameters()</td>
            </tr>
            <tr>
              <td>Marking</td>
-             <td>ASCII string (up to 11 characters) used for identification.</td>
+             <td>ASCII up to 11 chars.</td>
              <td>getMarking()</td>
            </tr>
            <tr>
              <td>Capabilities</td>
-             <td>Bitmask representing the capabilities of the entity.</td>
+             <td>Entity capability bitmask.</td>
              <td>getCapabilities()</td>
            </tr>
          </tbody>
@@ -289,13 +298,15 @@
     <section class="doc-section" id="cigi-protocol">
       <h2>Exploring the CIGI Protocol</h2>
       <p>
-        CIGI (Common Image Generator Interface) is designed for sending real-time control data to image generators, ensuring that rendered visuals accurately reflect the simulation state. It operates on a frame-based update system.
+        CIGI (Common Image Generator Interface) sends real-time control data to image generators, ensuring rendered visuals reflect the simulation state. It operates on a frame-based update system.
       </p>
-      <!-- Insert the CIGI image above the table -->
+      <p><em>Key idea:</em> CIGI does <strong>not</strong> carry explicit velocity fields for entities. Motion is perceived through successive pose updates at an adequate frequency.</p>
+
       <figure>
         <img src="CIGI.png" alt="A CIGI Package Sample Capture by Wireshark.">
         <figcaption style="font-size: 1.2em; font-weight: bold;">A CIGI Package Sample Capture by Wireshark.</figcaption>
       </figure>
+
       <h3>CIGI Packet Structure: Detailed Field Breakdown</h3>
       <table>
          <thead>
@@ -306,96 +317,23 @@
            </tr>
          </thead>
          <tbody>
-           <tr>
-             <td>Packet ID</td>
-             <td>Identifies the packet type (Entity Control).</td>
-             <td>NA</td>
-           </tr>
-           <tr>
-             <td>Packet Size</td>
-             <td>Total size of the packet.</td>
-             <td>NA</td>
-           </tr>
-           <tr>
-             <td>Entity ID</td>
-             <td>Unique 16-bit identifier for the entity.</td>
-             <td>SetEntityID()</td>
-           </tr>
-           <tr>
-             <td>Entity State</td>
-             <td>Enumerated state indicating the lifecycle or activity of the entity.</td>
-             <td>SetEntityState()</td>
-           </tr>
-           <tr>
-             <td>Attach State</td>
-             <td>Indicates whether the entity is attached or detached.</td>
-             <td>SetAttachState()</td>
-           </tr>
-           <tr>
-             <td>Collision Detection</td>
-             <td>Flags for collision detection requests.</td>
-             <td>SetCollisionDetectEn()</td>
-           </tr>
-           <tr>
-             <td>Inherit Alpha</td>
-             <td>Determines if the alpha (transparency) value is inherited.</td>
-             <td>SetInheritAlpha()</td>
-           </tr>
-           <tr>
-             <td>Ground/Ocean Clamp</td>
-             <td>Determines if ground or ocean clamping is enabled.</td>
-             <td>SetGrndClamp()</td>
-           </tr>
-           <tr>
-             <td>Alpha</td>
-             <td>Transparency value for the entity.</td>
-             <td>SetAlpha()</td>
-           </tr>
-           <tr>
-             <td>Reserved Byte</td>
-             <td>Reserved field (typically set to zero).</td>
-             <td>NA</td>
-           </tr>
-           <tr>
-             <td>Entity Type</td>
-             <td>Field representing the type of entity.</td>
-             <td>SetEntityType()</td>
-           </tr>
-           <tr>
-             <td>Parent ID</td>
-             <td>Identifier for the parent entity (if any).</td>
-             <td>SetParentID()</td>
-           </tr>
-           <tr>
-             <td>Roll</td>
-             <td>Rotation about the longitudinal axis, in degrees.</td>
-             <td>SetRoll()</td>
-           </tr>
-           <tr>
-             <td>Pitch</td>
-             <td>Rotation about the lateral axis, in degrees.</td>
-             <td>SetPitch()</td>
-           </tr>
-           <tr>
-             <td>Yaw</td>
-             <td>Rotation about the vertical axis, in degrees.</td>
-             <td>SetYaw()</td>
-           </tr>
-           <tr>
-             <td>Latitude</td>
-             <td>Geodetic latitude in degrees.</td>
-             <td>SetLat()</td>
-           </tr>
-           <tr>
-             <td>Longitude</td>
-             <td>Geodetic longitude in degrees.</td>
-             <td>SetLon()</td>
-           </tr>
-           <tr>
-             <td>Altitude</td>
-             <td>Altitude in meters.</td>
-             <td>SetAlt()</td>
-           </tr>
+           <tr><td>Packet ID</td><td>Packet type (e.g., Entity Control).</td><td>—</td></tr>
+           <tr><td>Packet Size</td><td>Total size.</td><td>—</td></tr>
+           <tr><td>Entity ID</td><td>Unique 16-bit per session.</td><td>SetEntityID()</td></tr>
+           <tr><td>Entity State</td><td>Lifecycle/activity.</td><td>SetEntityState()</td></tr>
+           <tr><td>Attach State</td><td>Attached/Detached.</td><td>SetAttachState()</td></tr>
+           <tr><td>Collision Detection</td><td>Collision flags.</td><td>SetCollisionDetectEn()</td></tr>
+           <tr><td>Inherit Alpha</td><td>Alpha inheritance.</td><td>SetInheritAlpha()</td></tr>
+           <tr><td>Ground/Ocean Clamp</td><td>Clamp mode.</td><td>SetGrndClamp()</td></tr>
+           <tr><td>Alpha</td><td>Transparency.</td><td>SetAlpha()</td></tr>
+           <tr><td>Entity Type</td><td>IG model/type.</td><td>SetEntityType()</td></tr>
+           <tr><td>Parent ID</td><td>Parent entity.</td><td>SetParentID()</td></tr>
+           <tr><td>Roll</td><td>Degrees.</td><td>SetRoll()</td></tr>
+           <tr><td>Pitch</td><td>Degrees.</td><td>SetPitch()</td></tr>
+           <tr><td>Yaw</td><td>Degrees.</td><td>SetYaw()</td></tr>
+           <tr><td>Latitude</td><td>Degrees.</td><td>SetLat()</td></tr>
+           <tr><td>Longitude</td><td>Degrees.</td><td>SetLon()</td></tr>
+           <tr><td>Altitude</td><td>Meters.</td><td>SetAlt()</td></tr>
          </tbody>
       </table>
     </section>
@@ -406,86 +344,54 @@
       <p>
         Mapping a DIS packet to a CIGI packet requires careful handling of field definitions, data representations, and protocol design differences. The process is broken down into several key steps:
       </p>
+
+      
+
       <h3>Challenges in Field Mapping</h3>
       <ul>
         <li>
-          <strong>Composite vs. Simple Identifiers:</strong>
-          DIS uses a composite 6-byte Entity Identifier made up of three 2-byte fields:
-          <ul>
-            <li>Site ID (uint16_t)</li>
-            <li>Application ID (uint16_t)</li>
-            <li>Entity ID (uint16_t)</li>
-          </ul>
-          This allows globally unique identification of entities across distributed simulation networks. CIGI, on the other hand, typically uses a single 16-bit (2-byte) Entity ID, which must be unique only within the scope of a connected session or scenario. This simplified format suits its local rendering role within the Image Generator (IG).
-          <br><br>
+          <strong>Composite vs. Simple Identifiers (Entity ID)</strong><br />
+          DIS uses a composite 6-byte identifier (Site, App, Entity). CIGI typically uses a single 16-bit ID unique only within a session.
+          <br /><br />
           <table>
-            <thead>
-              <tr>
-                <th>Protocol</th>
-                <th>Field Breakdown</th>
-                <th>Value</th>
-              </tr>
-            </thead>
+            <thead><tr><th>Protocol</th><th>Field Breakdown</th><th>Value</th></tr></thead>
             <tbody>
-              <tr>
-                <td>DIS</td>
-                <td>Site ID (uint16_t)</td>
-                <td>85</td>
-              </tr>
-              <tr>
-                <td>DIS</td>
-                <td>App ID (uint16_t)</td>
-                <td>60</td>
-              </tr>
-              <tr>
-                <td>DIS</td>
-                <td>Entity ID (uint16_t)</td>
-                <td>1001</td>
-              </tr>
-              <tr>
-                <td>→ Composite ID</td>
-                <td colspan="2">(85, 60, 1001)</td>
-              </tr>
-              <tr>
-                <td>CIGI</td>
-                <td>Entity ID (16-bit)</td>
-                <td>1 (or any 16-bit mapped ID)</td>
-              </tr>
+              <tr><td>DIS</td><td>Site ID (uint16_t)</td><td>85</td></tr>
+              <tr><td>DIS</td><td>App ID (uint16_t)</td><td>60</td></tr>
+              <tr><td>DIS</td><td>Entity ID (uint16_t)</td><td>1001</td></tr>
+              <tr><td>→ Composite ID</td><td colspan="2">(85, 60, 1001)</td></tr>
+              <tr><td>CIGI</td><td>Entity ID (16-bit)</td><td>1 (mapped)</td></tr>
             </tbody>
           </table>
-          In this case, you may create a lookup table or mapping logic that assigns the DIS entity (85, 60, 1001) a corresponding CIGI Entity ID of 1.
+          Example: map DIS (85, 60, 1001) → CIGI 1.
         </li>
-        <li><strong>Unit Conversion:</strong> Convert DIS orientations (radians) to CIGI degrees.</li>
+
+        <li>
+          <strong>Composite vs. Simple Entity Type Identifiers (Entity Type)</strong><br />
+          DIS uses a detailed 7-field composite type; CIGI uses a single 16-bit type per IG database/modeling scheme.
+          <br /><br />
+          <table>
+            <thead><tr><th>Protocol</th><th>Field Breakdown</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>DIS</td><td>Entity Kind (u8)</td><td>1</td></tr>
+              <tr><td>DIS</td><td>Domain (u8)</td><td>1</td></tr>
+              <tr><td>DIS</td><td>Country (u16)</td><td>225</td></tr>
+              <tr><td>DIS</td><td>Category (u8)</td><td>2</td></tr>
+              <tr><td>DIS</td><td>Subcategory (u8)</td><td>1</td></tr>
+              <tr><td>DIS</td><td>Specific (u8)</td><td>0</td></tr>
+              <tr><td>DIS</td><td>Extra (u8)</td><td>0</td></tr>
+              <tr><td>→ Composite</td><td colspan="2">(1,1,225,2,1,0,0)</td></tr>
+              <tr><td>CIGI</td><td>Entity Type (16-bit)</td><td>101 (mapped)</td></tr>
+            </tbody>
+          </table>
+          Example: map DIS composite type → CIGI type 101.
+        </li>
+
         <li><strong>Coordinate Conversion:</strong> Convert ECEF coordinates (DIS) into geodetic coordinates (latitude, longitude, altitude) for CIGI.</li>
-        <li><strong>Bitfield Extraction:</strong> Extract critical state information from DIS bitfields and map them to discrete CIGI enumerations.</li>
+	  <li><strong>Orientation Conversion:</strong> Convert DIS::EulerAngles psi, phi, theta (ECEF) to NED Euler angles roll, pitch, yaw using a manual transformation matrix, not just converting radians to degrees, and adjust for left-handed NED if required by the Image Generator.</li>
       </ul>
-      <h3>Conversion Steps</h3>
-      <ol>
-        <li><strong>Extract Data:</strong> Use OpenDIS getters to retrieve each field from the DIS packet.</li>
-        <li><strong>Data Conversions:</strong>
-          <ul>
-            <li>Convert composite DIS Entity IDs into a 16-bit CIGI ID.</li>
-            <li>Transform Euler angles from radians to degrees.</li>
-            <li>Convert ECEF coordinates to geodetic coordinates using an iterative algorithm or library.</li>
-          </ul>
-        </li>
-        <li><strong>Map Appearance Bits:</strong> Extract specific bits (e.g., bits 22–23) from the DIS Appearance field and map to the corresponding CIGI state.</li>
-        <li><strong>Assemble the CIGI Packet:</strong> Use CCL setters to populate the CIGI Entity Control packet.</li>
-        <li><strong>Validation and Synchronization:</strong> Confirm all values are within acceptable ranges and maintain proper frame synchronization.</li>
-      </ol>
-      <h3>Entity Lifecycle Management</h3>
-      <p>
-        One key difference between the two protocols lies in entity lifecycle control. DIS broadcasts entity state continuously—meaning an entity “exists” as long as its state is being transmitted. In contrast, CIGI requires explicit management of entity states:
-      </p>
-      <ul>
-        <li><strong>Spawning Entities:</strong> When a new DIS entity appears, issue a CIGI Entity Control packet with <code>SetEntityState(CigiBaseEntityCtrl::Active)</code>.</li>
-        <li><strong>Updating Entities:</strong> As long as the entity remains present in DIS, send periodic updates with Active state.</li>
-        <li><strong>Removing Entities:</strong> When an entity disappears from DIS or becomes inactive, send a <code>SetEntityState(CigiBaseEntityCtrl::Remove)</code> to explicitly remove it from the scene.</li>
-      </ul>
-      <p>
-        Failing to manage this lifecycle can result in visual artifacts—such as “ghost” entities remaining visible on the Image Generator.
-      </p>
-      <h3>Use of Lookup Tables (Alternative Strategy)</h3>
+
+       <h3>Use of Lookup Tables (Alternative Strategy)</h3>
       <p>
         In many real-world simulation environments, an alternative and often more efficient approach is to use explicit lookup tables to map DIS fields to predefined CIGI values. This is particularly helpful when the simulation environment is known in advance.
       </p>
@@ -494,25 +400,44 @@
         <li><strong>Advantages:</strong> Improves runtime efficiency, simplifies mapping logic, and provides deterministic behavior for entity rendering.</li>
         <li><strong>Use Case Dependency:</strong> In tightly controlled simulation systems (e.g., military aircraft or ground vehicles), this approach is not only easier but sometimes the only practical way to ensure correct CIGI behavior.</li>
       </ul>
+
+      <h3>Entity Lifecycle Management</h3>
+      <p>
+        One key difference between the two protocols lies in entity lifecycle control. DIS broadcasts entity state continuously—meaning an entity “exists” as long as its state is being transmitted. In contrast, CIGI requires explicit management of entity states:
+      </p>
+      </p>
+      <ul>
+        <li><strong>Spawn:</strong> On first sighting, send Entity Control with <code>Active</code>.</li>
+        <li><strong>Update:</strong> Continue sending <code>Active</code> with pose updates.</li>
+        <li><strong>Remove:</strong> When DIS stops or entity is gone, send <code>Remove</code> to clear visuals.</li>
+      </ul>
     </section>
 
     <!-- Conversion Flow Section -->
     <section class="doc-section" id="conversion">
       <h2>Detailed Data Conversion and Velocity Handling</h2>
       <p>
-        Data conversion is critical when mapping DIS packets to CIGI packets. It involves transforming field values to match the destination protocol's formats and handling movement data in a unique manner.
+        Data conversion transforms DIS fields into CIGI-ready values and handles motion via pose update rate rather than explicit velocity fields.
       </p>
-      <h3>Field Value Conversions</h3>
-      <p>
-        <strong>Identifier Conversion:</strong> Convert composite DIS identifiers into a simple 16-bit value via truncation or remapping.<br>
-        <strong>Orientation Conversion:</strong> Transform Euler angles from radians to degrees using the formula: <code>Degrees = Radians * (180/π)</code>.<br>
-        <strong>Coordinate Conversion:</strong> Convert ECEF coordinates into geodetic coordinates (latitude, longitude, altitude) using an iterative algorithm or a conversion library such as GeographicLib.
-      </p>
+
+      <h3>Consolidated Data Conversion Flow</h3>
+      <ol>
+        <li><strong>Extract:</strong> Use OpenDIS getters to read fields.</li>
+        <li><strong>Identifiers:</strong> Map composite DIS IDs to session-unique CIGI IDs.</li>
+        <li><strong>Orientation:</strong> Convert DIS ψ/θ/φ (radians) → degrees; normalize yaw/pitch/roll to your IG’s conventions.</li>
+        <li><strong>Coordinates:</strong> Convert ECEF → WGS-84 (Lat/Lon/Alt) and validate ranges.</li>
+        <li><strong>Appearance:</strong> Decode bitfields to CIGI states.</li>
+        <li><strong>Assemble:</strong> Populate CIGI packets via CCL setters and send.</li>
+      </ol>
+
       <h3>Velocity Handling</h3>
-      <p>
-        DIS includes a velocity vector (X, Y, Z), but CIGI does not have a dedicated velocity field. Instead, CIGI relies on rapid updates of position and orientation. The Image Generator (IG) interprets movement by comparing successive frames—for example, if an entity’s position changes from <code>P1</code> at time <code>t</code> to <code>P2</code> at time <code>t+Δt</code>, the movement is derived from <code>P2 - P1</code>.
-      </p>
-      <h4>Debugging and Reverse Engineering Insights</h4>
+      <ul>
+        <li><strong>Cadence over velocity:</strong> Since CIGI motion is inferred from successive poses, choose an update rate that hides sparse DIS input.</li>
+        <li><strong>Interpolation / Dead-reckoning:</strong> If DIS rates are low/bursty, consider bounded, reversible smoothing so the pose converges back to truth on fresh DIS.</li>
+        <li><strong>Determinism:</strong> Keep interpolation logic deterministic and logged for traceability.</li>
+      </ul>
+
+      <h4>Debugging and Reverse Engineering Notes</h4>
       <p>
         To accurately map between protocols, reverse engineering played a vital role. Using Wireshark, CIGI packets were captured during known events, such as spawning or firing. This allowed observation of:
       </p>
@@ -526,28 +451,21 @@
       <p>
         This reverse engineering approach filled in documentation gaps and confirmed expected behaviors on the Image Generator.
       </p>
-      <h3>Consolidated Data Conversion Flow</h3>
-      <p>
-        1. Extract data from the DIS packet using OpenDIS getters.<br>
-        2. Convert composite identifiers, orientations, and coordinates as described.<br>
-        3. Omit direct velocity mapping – allow high-frequency updates to imply motion.<br>
-        4. Assemble the CIGI packet using CCL setters.<br>
-        5. Validate all values and ensure synchronization.
-      </p>
     </section>
 
     <!-- Best Practices Section -->
     <section class="doc-section" id="best-practices">
       <h2>Conclusion and Best Practices</h2>
       <p>
-        Mapping DIS to CIGI poses unique challenges due to differences in field definitions, measurement units, and update frequencies. A thorough understanding of both protocols and a methodical conversion process are essential for ensuring seamless simulation interoperability.
+        DIS→CIGI conversion hinges on steady IDs, robust coordinate/orientation transforms, and an update rate that visually conveys motion. Document and version your mapping decisions.
       </p>
       <h3>Best Practices</h3>
       <ul>
-        <li>Document every conversion step – include OpenDIS getters and CCL setters.</li>
-        <li>Validate data ranges, especially for positions and orientations.</li>
-        <li>Optimize performance-critical tasks with efficient code (e.g., inline functions for coordinate conversion).</li>
-        <li>Maintain comprehensive logging to facilitate debugging and error resolution.</li>
+        <li>Document each conversion step with the exact getters/setters used.</li>
+        <li>Validate data ranges (especially lat/lon and angle wraps).</li>
+        <li>Persist lookup tables (ID/type/appearance) in version control.</li>
+        <li>Log conversions and decisions for reproducibility.</li>
+        <li>Prefer deterministic, bounded interpolation when smoothing sparse DIS input.</li>
       </ul>
     </section>
 
